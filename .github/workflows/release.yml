@@ -21,3 +21,5 @@ jobs:
         project_path: "./cmd/OledPiUI"
         binary_name: "OledPiUI"
         extra_files: LICENSE README.md
+        md5sum: false
+        sha256sum: true

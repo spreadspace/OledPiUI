@@ -28,8 +28,12 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/warthog618/gpiod"
@@ -86,8 +90,14 @@ func main() {
 		Face: f,
 		Dot:  fixed.P(0, img.Bounds().Dy()-1-f.Descent),
 	}
-	drawer.DrawString("Hello from periph!")
+	drawer.DrawString("Hello World!")
 	if err := dev.Draw(dev.Bounds(), img, image.Point{}); err != nil {
 		log.Fatal(err)
 	}
+
+	// wait for CTRL-C
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	fmt.Printl("press CTRL-C to exit...")
+	<-c
 }

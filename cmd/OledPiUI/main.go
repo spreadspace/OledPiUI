@@ -98,6 +98,6 @@ func main() {
 	// wait for CTRL-C
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	fmt.Printl("press CTRL-C to exit...")
+	fmt.Println("press CTRL-C to exit...")
 	<-c
 }

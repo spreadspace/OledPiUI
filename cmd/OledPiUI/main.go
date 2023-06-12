@@ -28,9 +28,66 @@
 package main
 
 import (
-	"fmt"
+	"image"
+	"log"
+	"time"
+
+	"github.com/warthog618/gpiod"
+
+	"periph.io/x/conn/v3/i2c/i2creg"
+	"periph.io/x/devices/v3/ssd1306"
+	"periph.io/x/devices/v3/ssd1306/image1bit"
+	"periph.io/x/host/v3"
+
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/basicfont"
+	"golang.org/x/image/math/fixed"
 )
 
 func main() {
-	fmt.Println("hello world")
+	// Reset PIN
+	rst, err := gpiod.RequestLine("gpiochip0", 27, gpiod.AsOutput(0))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		rst.Reconfigure(gpiod.AsInput)
+		rst.Close()
+	}()
+	rst.SetValue(1)
+	time.Sleep(100 * time.Millisecond)
+	rst.SetValue(0)
+	time.Sleep(100 * time.Millisecond)
+	rst.SetValue(1)
+
+	// Make sure periph is initialized.
+	if _, err := host.Init(); err != nil {
+		log.Fatal(err)
+	}
+
+	// Use i2creg I²C bus registry to find the first available I²C bus.
+	b, err := i2creg.Open("")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer b.Close()
+
+	dev, err := ssd1306.NewI2C(b, &ssd1306.DefaultOpts)
+	if err != nil {
+		log.Fatalf("failed to initialize ssd1306: %v", err)
+	}
+
+	// Draw on it.
+	img := image1bit.NewVerticalLSB(dev.Bounds())
+	f := basicfont.Face7x13
+	drawer := font.Drawer{
+		Dst:  img,
+		Src:  &image.Uniform{image1bit.On},
+		Face: f,
+		Dot:  fixed.P(0, img.Bounds().Dy()-1-f.Descent),
+	}
+	drawer.DrawString("Hello from periph!")
+	if err := dev.Draw(dev.Bounds(), img, image.Point{}); err != nil {
+		log.Fatal(err)
+	}
 }

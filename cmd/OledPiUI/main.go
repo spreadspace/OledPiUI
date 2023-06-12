@@ -44,7 +44,7 @@ import (
 	"periph.io/x/host/v3"
 
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
+	"golang.org/x/image/font/inconsolata"
 	"golang.org/x/image/math/fixed"
 )
 
@@ -83,14 +83,22 @@ func main() {
 
 	// Draw on it.
 	img := image1bit.NewVerticalLSB(dev.Bounds())
-	f := basicfont.Face7x13
-	drawer := font.Drawer{
-		Dst:  img,
-		Src:  &image.Uniform{image1bit.On},
-		Face: f,
-		Dot:  fixed.P(0, img.Bounds().Dy()-1-f.Descent),
-	}
-	drawer.DrawString("Hello World!")
+	drawer := font.Drawer{Dst: img, Src: &image.Uniform{image1bit.On}}
+
+	drawer.Face = inconsolata.Bold8x16
+	m := drawer.Face.Metrics()
+	drawer.Dot = fixed.Point26_6{X: 0, Y: m.Ascent}
+	drawer.DrawString("Header")
+
+	drawer.Face = inconsolata.Regular8x16
+	m = drawer.Face.Metrics()
+	drawer.Dot = fixed.Point26_6{X: 0, Y: m.Ascent + m.Height}
+	drawer.DrawString("line2")
+	drawer.Dot = fixed.Point26_6{X: 0, Y: m.Ascent + 2*m.Height}
+	drawer.DrawString("line3")
+	drawer.Dot = fixed.Point26_6{X: 0, Y: m.Ascent + 3*m.Height}
+	drawer.DrawString("line4")
+
 	if err := dev.Draw(dev.Bounds(), img, image.Point{}); err != nil {
 		log.Fatal(err)
 	}
@@ -98,6 +106,6 @@ func main() {
 	// wait for CTRL-C
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	fmt.Println("press CTRL-C to exit...")
+	fmt.Printf("press CTRL-C to exit ...")
 	<-c
 }

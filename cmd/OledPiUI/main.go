@@ -48,8 +48,23 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
+func drawLine(dev *ssd1306.Dev, face font.Face, lineNum int, text string) error {
+	img := image1bit.NewVerticalLSB(image.Rect(0, 0, 128, 16))
+	m := face.Metrics()
+	drawer := font.Drawer{
+		Dst:  img,
+		Src:  &image.Uniform{image1bit.On},
+		Face: face,
+		Dot:  fixed.Point26_6{X: 0, Y: m.Ascent},
+	}
+	drawer.DrawString(text)
+	height := m.Height.Round()
+	yOffset := lineNum * height
+	return dev.Draw(image.Rect(0, yOffset, 128, yOffset+height), drawer.Dst, image.Point{})
+}
+
 func main() {
-	// Reset PIN
+	// reset
 	rst, err := gpiod.RequestLine("gpiochip0", 27, gpiod.AsOutput(0))
 	if err != nil {
 		log.Fatal(err)
@@ -82,24 +97,16 @@ func main() {
 	}
 
 	// Draw on it.
-	img := image1bit.NewVerticalLSB(dev.Bounds())
-	drawer := font.Drawer{Dst: img, Src: &image.Uniform{image1bit.On}}
-
-	drawer.Face = inconsolata.Bold8x16
-	m := drawer.Face.Metrics()
-	drawer.Dot = fixed.Point26_6{X: 0, Y: m.Ascent}
-	drawer.DrawString("Header")
-
-	drawer.Face = inconsolata.Regular8x16
-	m = drawer.Face.Metrics()
-	drawer.Dot = fixed.Point26_6{X: 0, Y: m.Ascent + m.Height}
-	drawer.DrawString("line2")
-	drawer.Dot = fixed.Point26_6{X: 0, Y: m.Ascent + 2*m.Height}
-	drawer.DrawString("line3")
-	drawer.Dot = fixed.Point26_6{X: 0, Y: m.Ascent + 3*m.Height}
-	drawer.DrawString("line4")
-
-	if err := dev.Draw(dev.Bounds(), img, image.Point{}); err != nil {
+	if err := drawLine(dev, inconsolata.Bold8x16, 0, "Heading"); err != nil {
+		log.Fatal(err)
+	}
+	if err := drawLine(dev, inconsolata.Regular8x16, 1, "* Menu Entry 1"); err != nil {
+		log.Fatal(err)
+	}
+	if err := drawLine(dev, inconsolata.Regular8x16, 2, "* Menu Entry 2"); err != nil {
+		log.Fatal(err)
+	}
+	if err := drawLine(dev, inconsolata.Regular8x16, 3, "* Menu Entry 3"); err != nil {
 		log.Fatal(err)
 	}
 

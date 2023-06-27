@@ -10,4 +10,8 @@ require (
 	periph.io/x/host/v3 v3.8.2
 )
 
-require golang.org/x/sys v0.5.0 // indirect
+require (
+	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/toxygene/gpiod-ky-040-rotary-encoder v1.0.4 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+)

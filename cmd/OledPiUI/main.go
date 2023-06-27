@@ -28,8 +28,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"image"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -37,6 +39,9 @@ import (
 	"time"
 
 	"github.com/warthog618/gpiod"
+
+	"github.com/sirupsen/logrus"
+	"github.com/toxygene/gpiod-ky-040-rotary-encoder/device"
 
 	"periph.io/x/conn/v3/i2c/i2creg"
 	"periph.io/x/devices/v3/ssd1306"
@@ -63,9 +68,55 @@ func drawLine(dev *ssd1306.Dev, face font.Face, lineNum int, text string) error 
 	return dev.Draw(image.Rect(0, yOffset, 128, yOffset+height), drawer.Dst, image.Point{})
 }
 
+func btnHandler(evt gpiod.LineEvent) {
+	fmt.Printf("btnHandler got: %+v\n", evt)
+}
+
 func main() {
+	chip, err := gpiod.NewChip("gpiochip0")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer chip.Close()
+
+	// button
+	btn, err := chip.RequestLine(24, gpiod.WithPullUp, gpiod.WithEventHandler(btnHandler), gpiod.WithFallingEdge)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer btn.Close()
+
+	// rotary encoder
+	logger := logrus.New()
+	logger.Out = ioutil.Discard
+	// force internal Pull-Ups
+	tmp, err := chip.RequestLines([]int{22, 23}, gpiod.AsInput, gpiod.WithPullUp)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tmp.Close()
+	actions := make(chan device.Action)
+	go func() {
+		defer close(actions)
+		re := device.NewRotaryEncoder(chip, 22, 23, logrus.NewEntry(logger))
+		err := re.Run(context.Background(), actions)
+		fmt.Println("rotary-encoder go-routine has stopped with error: ", err)
+	}()
+	go func() {
+		i := 0
+		for action := range actions {
+			switch action {
+			case device.Clockwise:
+				i++
+			case device.CounterClockwise:
+				i--
+			}
+			fmt.Printf("rotary-encoder value is now: %d\n", i)
+		}
+	}()
+
 	// reset
-	rst, err := gpiod.RequestLine("gpiochip0", 27, gpiod.AsOutput(0))
+	rst, err := chip.RequestLine(27, gpiod.AsOutput(0))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,6 +164,6 @@ func main() {
 	// wait for CTRL-C
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	fmt.Printf("press CTRL-C to exit ...")
+	fmt.Printf("press CTRL-C to exit ... \n")
 	<-c
 }
